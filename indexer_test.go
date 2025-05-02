@@ -16,6 +16,8 @@ import (
 	testcontainers_wiremock "github.com/wiremock/wiremock-testcontainers-go"
 )
 
+const record = false
+
 func TestIndexRecord(t *testing.T) {
 	ctx := context.Background() // for some reason wiremock doesn't like the testing context
 
@@ -45,7 +47,6 @@ func TestIndexRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get wiremock container endpoint: %v", err)
 	}
-	debug.Enable() // helps with seeing the progress, since this is super long
 
 	appID := os.Getenv("ALGOLIA_APP_ID")
 	apiKey := os.Getenv("ALGOLIA_API_KEY")
@@ -59,21 +60,25 @@ func TestIndexRecord(t *testing.T) {
 		}
 	})
 
-	err = wiremockClient.StartRecording(fmt.Sprintf(
-		"https://%s-dsn.algolia.net",
-		appID,
-	))
+	if record {
+		debug.Enable() // helps with seeing the progress, since this is super long
 
-	if err != nil {
-		t.Fatalf("Failed to start recording: %v", err)
-	}
+		err = wiremockClient.StartRecording(fmt.Sprintf(
+			"https://%s-dsn.algolia.net",
+			appID,
+		))
 
-	t.Cleanup(func() {
-		err := wiremockClient.StopRecording()
 		if err != nil {
-			t.Fatalf("Failed to stop recording: %v", err)
+			t.Fatalf("Failed to start recording: %v", err)
 		}
-	})
+
+		t.Cleanup(func() {
+			err := wiremockClient.StopRecording()
+			if err != nil {
+				t.Fatalf("Failed to stop recording: %v", err)
+			}
+		})
+	}
 
 	algoliaClient, err := search.NewClientWithConfig(search.SearchConfiguration{
 		Configuration: transport.Configuration{
