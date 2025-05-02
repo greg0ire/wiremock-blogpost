@@ -18,7 +18,9 @@ import (
 
 const record = false
 
-func TestIndexRecord(t *testing.T) {
+func spinUpContainer(t *testing.T) string {
+	t.Helper()
+
 	ctx := context.Background() // for some reason wiremock doesn't like the testing context
 
 	absolutePath, err := os.Getwd()
@@ -27,6 +29,8 @@ func TestIndexRecord(t *testing.T) {
 	}
 
 	var opts []testcontainers.ContainerCustomizer
+
+	opts = append(opts, testcontainers_wiremock.WithImage("wiremock/wiremock:3.12.1"))
 
 	if record {
 		opts = append(opts, testcontainers.WithHostConfigModifier(func(hostConfig *container.HostConfig) {
@@ -64,9 +68,11 @@ func TestIndexRecord(t *testing.T) {
 		t.Fatalf("Failed to get wiremock container endpoint: %v", err)
 	}
 
-	appID := os.Getenv("ALGOLIA_APP_ID")
-	apiKey := os.Getenv("ALGOLIA_API_KEY")
-	indexName := "test-index"
+	return host
+}
+
+func startRecording(t *testing.T, host string, appID string) {
+	t.Helper()
 
 	wiremockClient := wiremock.NewClient("http://" + host)
 	t.Cleanup(func() {
@@ -76,25 +82,29 @@ func TestIndexRecord(t *testing.T) {
 		}
 	})
 
-	if record {
-		debug.Enable() // helps with seeing the progress, since this is super long
-
-		err = wiremockClient.StartRecording(fmt.Sprintf(
-			"https://%s-dsn.algolia.net",
-			appID,
-		))
-
-		if err != nil {
-			t.Fatalf("Failed to start recording: %v", err)
-		}
-
-		t.Cleanup(func() {
-			err := wiremockClient.StopRecording()
-			if err != nil {
-				t.Fatalf("Failed to stop recording: %v", err)
-			}
-		})
+	if !record {
+		return
 	}
+	debug.Enable()
+	err := wiremockClient.StartRecording(fmt.Sprintf(
+		"https://%s-dsn.algolia.net",
+		appID,
+	))
+
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	t.Cleanup(func() {
+		err := wiremockClient.StopRecording()
+		if err != nil {
+			t.Fatalf("Failed to stop recording: %v", err)
+		}
+	})
+}
+
+func newTestClient(t *testing.T, host, appID, apiKey string) *search.APIClient {
+	t.Helper()
 
 	algoliaClient, err := search.NewClientWithConfig(search.SearchConfiguration{
 		Configuration: transport.Configuration{
@@ -112,8 +122,22 @@ func TestIndexRecord(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
+	return algoliaClient
+}
+
+func TestIndexRecord(t *testing.T) {
+	appID := os.Getenv("ALGOLIA_APP_ID")
+	apiKey := os.Getenv("ALGOLIA_API_KEY")
+	indexName := "test-index"
+
+	host := spinUpContainer(t)
+
+	startRecording(t, host, appID)
+
+	algoliaClient := newTestClient(t, host, appID, apiKey)
+
 	// Create index indirectly by setting settings
-	_, err = algoliaClient.SetSettings(algoliaClient.NewApiSetSettingsRequest(
+	_, err := algoliaClient.SetSettings(algoliaClient.NewApiSetSettingsRequest(
 		"test-index",
 		search.NewEmptyIndexSettings().SetSearchableAttributes([]string{"name"}),
 	))
@@ -144,5 +168,11 @@ func TestIndexRecord(t *testing.T) {
 
 	if len(searchResp.Hits) == 0 {
 		t.Fatal("No hits found")
+	}
+
+	firstHit := searchResp.Hits[0]
+
+	if firstHit.AdditionalProperties["name"] != "test record" {
+		t.Fatalf("Expected name to be 'test record', got '%s'", firstHit.AdditionalProperties["name"])
 	}
 }
