@@ -1,0 +1,30 @@
+{
+  "id" : "8a47b8cf-5e6f-4e61-a724-955a11e785ff",
+  "name" : "1_indexes_test-index",
+  "request" : {
+    "url" : "/1/indexes/test-index",
+    "method" : "POST",
+    "bodyPatterns" : [ {
+      "equalToJson" : "{\"name\":\"test record\",\"objectID\":\"object-1\"}\n",
+      "ignoreArrayOrder" : true,
+      "ignoreExtraElements" : true
+    } ]
+  },
+  "response" : {
+    "status" : 201,
+    "body" : "{\"createdAt\":\"2025-06-19T15:50:05.565100461Z\",\"taskID\":236968828554,\"objectID\":\"object-1\"}",
+    "headers" : {
+      "Strict-Transport-Security" : "max-age=31536000; includeSubDomains",
+      "Access-Control-Allow-Origin" : "*",
+      "Access-Control-Allow-Methods" : "PUT, GET, POST, OPTIONS, DELETE",
+      "Accept-Encoding" : "deflate, gzip",
+      "Access-Control-Max-Age" : "1728000",
+      "Access-Control-Allow-Headers" : "x-algolia-application-id,connection,origin,x-algolia-api-key,content-type,content-length,x-algolia-signature,x-algolia-user-id,x-algolia-usertoken,x-algolia-tagfilters,x-algolia-agent,DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Authorization,Accept,Pragma",
+      "Date" : "Thu, 19 Jun 2025 15:50:05 GMT",
+      "Content-Type" : "application/json; charset=utf-8"
+    }
+  },
+  "uuid" : "8a47b8cf-5e6f-4e61-a724-955a11e785ff",
+  "persistent" : true,
+  "insertionIndex" : 38
+}
