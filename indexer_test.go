@@ -26,15 +26,31 @@ func TestIndexRecord(t *testing.T) {
 		t.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	container, err := testcontainers_wiremock.RunContainerAndStopOnCleanup(
-		ctx,
-		t,
-		testcontainers.WithHostConfigModifier(func(hostConfig *container.HostConfig) {
+	var opts []testcontainers.ContainerCustomizer
+
+	if record {
+		opts = append(opts, testcontainers.WithHostConfigModifier(func(hostConfig *container.HostConfig) {
 			hostConfig.Binds = []string{
 				absolutePath + "/testdata:/home/wiremock/mappings",
 			}
-		}),
-		testcontainers_wiremock.WithImage("wiremock/wiremock:3.12.1"),
+		}))
+	} else {
+		mappingFiles, err := os.ReadDir(absolutePath + "/testdata")
+		if err != nil {
+			t.Fatalf("Failed to read testdata directory: %v", err)
+		}
+		for _, mappingFile := range mappingFiles {
+			opts = append(opts, testcontainers_wiremock.WithMappingFile(
+				mappingFile.Name(),
+				"testdata/"+mappingFile.Name(),
+			))
+		}
+	}
+
+	container, err := testcontainers_wiremock.RunContainerAndStopOnCleanup(
+		ctx,
+		t,
+		opts...,
 	)
 
 	if err != nil {
