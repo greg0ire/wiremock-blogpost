@@ -32,7 +32,11 @@ func indexRecord() { // nolint:unused // we do not want to write a full-fleged a
 	}
 
 	// Wait until indexing is done
-	_, err = client.WaitForTask(indexName, saveResp.TaskID)
+	_, err = client.WaitForTask(
+		indexName,
+		saveResp.TaskID,
+		search.WithMaxRetries(100),
+	)
 
 	if err != nil {
 		panic(err)
